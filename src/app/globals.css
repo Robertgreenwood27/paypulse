@@ -1,26 +1,39 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #212121;
+  --foreground: #ffffff;
+  --accent-green: #8BAE92;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 
+    'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Custom utility classes that extend Tailwind */
+@layer utilities {
+  .bg-accent-green {
+    background-color: var(--accent-green);
+  }
+  
+  .text-accent-green {
+    color: var(--accent-green);
+  }
+  
+  .border-accent-green {
+    border-color: var(--accent-green);
+  }
+  
+  .focus\:ring-accent-green:focus {
+    --tw-ring-color: var(--accent-green);
+  }
+  
+  .focus\:border-accent-green:focus {
+    border-color: var(--accent-green);
+  }
 }
