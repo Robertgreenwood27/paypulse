@@ -9,7 +9,7 @@ export default async function AppLayout({ children }) {
   try {
     // Double-check authentication at the layout level
     const cookieStore = cookies();
-    const supabase = createSupabaseServerClient(cookieStore);
+    const supabase = await createSupabaseServerClient(cookieStore);
     
     // Use optional chaining to avoid errors if any object is undefined
     const { data, error } = await supabase.auth.getSession();

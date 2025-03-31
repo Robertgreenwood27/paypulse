@@ -8,7 +8,7 @@ import { INCOME_FREQUENCIES } from '@/lib/constants/incomeConstants';
 
 export async function addIncomeSource(formData) {
   const cookieStore = cookies();
-  const supabase = createSupabaseServerClient(cookieStore);
+  const supabase = await createSupabaseServerClient(cookieStore);
 
   const { data: { session }, error: sessionError } = await supabase.auth.getSession();
   if (sessionError || !session) {
@@ -81,7 +81,7 @@ export async function deleteIncomeSource(incomeId) {
     return { success: false, error: 'Income ID is required.' };
   }
   const cookieStore = cookies();
-  const supabase = createSupabaseServerClient(cookieStore);
+  const supabase = await createSupabaseServerClient(cookieStore);
 
   const { data: { session }, error: sessionError } = await supabase.auth.getSession();
   if (sessionError || !session) {
@@ -112,7 +112,7 @@ export async function updateIncomeSource(incomeId, formData) {
   }
 
   const cookieStore = cookies();
-  const supabase = createSupabaseServerClient(cookieStore);
+  const supabase = await createSupabaseServerClient(cookieStore);
 
   const { data: { session }, error: sessionError } = await supabase.auth.getSession();
   if (sessionError || !session) {

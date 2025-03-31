@@ -11,7 +11,7 @@ export async function GET(request) {
 
   if (code) {
     const cookieStore = cookies();
-    const supabase = createSupabaseServerClient(cookieStore); // Pass cookieStore
+    const supabase = await createSupabaseServerClient(cookieStore); // Pass cookieStore
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
       // On successful exchange, redirect user to the intended page or dashboard

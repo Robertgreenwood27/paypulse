@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 
 export async function getIncomeSources() {
   const cookieStore = cookies();
-  const supabase = createSupabaseServerClient(cookieStore);
+  const supabase = await createSupabaseServerClient(cookieStore);
 
   const { data: { user }, error: userError } = await supabase.auth.getUser();
 
@@ -34,7 +34,7 @@ export async function getIncomeSourceById(incomeId) {
   }
 
   const cookieStore = cookies();
-  const supabase = createSupabaseServerClient(cookieStore);
+  const supabase = await createSupabaseServerClient(cookieStore);
   const { data: { user }, error: userError } = await supabase.auth.getUser();
 
   if (userError || !user) {

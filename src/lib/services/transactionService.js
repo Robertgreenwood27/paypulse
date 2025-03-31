@@ -1,11 +1,10 @@
-// src/lib/services/transactionService.js
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
 
 // Fetches all transactions for the logged-in user, optionally filtered by accountId
 export async function getTransactions(accountId = null) {
   const cookieStore = cookies();
-  const supabase = createSupabaseServerClient(cookieStore);
+  const supabase = await createSupabaseServerClient(cookieStore);
 
   const { data: { user }, error: userError } = await supabase.auth.getUser();
 
@@ -16,10 +15,11 @@ export async function getTransactions(accountId = null) {
 
   let query = supabase
     .from('transactions')
-    // Select transaction details AND related account name for display
+    // Use specific foreign key relationships with aliases for clearer structure
     .select(`
         *,
-        accounts ( name, type )
+        source_account:accounts!transactions_account_id_fkey (id, name, type),
+        payment_to:accounts!transactions_payment_to_account_id_fkey (id, name, type)
       `)
     .eq('user_id', user.id) // Ensure user owns the transaction (RLS backup)
     .order('date', { ascending: false }) // Show most recent first
@@ -44,7 +44,7 @@ export async function getTransactionById(transactionId) {
      if (!transactionId) return { transaction: null, error: new Error('Transaction ID required.') };
 
      const cookieStore = cookies();
-     const supabase = createSupabaseServerClient(cookieStore);
+     const supabase = await createSupabaseServerClient(cookieStore);
      const { data: { user }, error: userError } = await supabase.auth.getUser();
 
      if (userError || !user) return { transaction: null, error: new Error('User not authenticated') };

@@ -1,5 +1,5 @@
 // src/lib/supabase/server.js
-import { createServerClient } from '@supabase/ssr';
+import { createServerClient } from '@supabase/ssr'; // Add this import
 import { cookies } from 'next/headers';
 
 export function createSupabaseServerClient(cookieStore = cookies()) {
@@ -13,7 +13,9 @@ export function createSupabaseServerClient(cookieStore = cookies()) {
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       get(name) {
-        return cookieStore.get(name)?.value;
+        // Keep this synchronous
+        const cookie = cookieStore.get(name);
+        return cookie?.value;
       },
       set(name, value, options) {
         try {

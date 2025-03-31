@@ -14,6 +14,11 @@ const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(numericAmount);
 };
 
+const formatPercentage = (value) => {
+    if (value === null || value === undefined || isNaN(value)) return 'N/A';
+    return `${value}%`;
+};
+
 const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     try {
@@ -35,6 +40,7 @@ const formatDate = (dateString) => {
 export default function AccountCard({ account }) {
     const [isDeletePending, startDeleteTransition] = useTransition();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [showDetails, setShowDetails] = useState(false);
 
     if (!account) return null;
 
@@ -53,6 +59,42 @@ export default function AccountCard({ account }) {
 
     const openEditModal = () => setIsEditModalOpen(true);
     const closeEditModal = () => setIsEditModalOpen(false);
+    const toggleDetails = () => setShowDetails(!showDetails);
+
+    // Determine if this is a credit card
+    const isCreditCard = account.type === 'credit card';
+    
+    // Calculate available credit and utilization for credit cards
+    let availableCredit = 0;
+    let utilizationRate = 0;
+    let minPayment = 0;
+    
+    if (isCreditCard && account.credit_limit) {
+        availableCredit = Math.max(0, account.credit_limit - account.current_balance);
+        utilizationRate = account.current_balance > 0 ? 
+            (account.current_balance / account.credit_limit) * 100 : 0;
+            
+        // Calculate minimum payment based on percentage and fixed amount
+        if (account.min_payment_percent) {
+            minPayment = (account.current_balance * account.min_payment_percent) / 100;
+        }
+        
+        if (account.min_payment_fixed) {
+            minPayment += account.min_payment_fixed;
+        }
+        
+        // Handle edge cases
+        minPayment = Math.min(minPayment, account.current_balance);
+    }
+    
+    // Get appropriate color for utilization rate
+    const getUtilizationColor = (rate) => {
+        if (rate >= 75) return 'text-red-400';
+        if (rate >= 30) return 'text-yellow-400';
+        return 'text-green-400';
+    };
+    
+    const utilizationColor = getUtilizationColor(utilizationRate);
 
     return (
         <>
@@ -70,10 +112,10 @@ export default function AccountCard({ account }) {
                         <div className="text-right space-x-1 flex-shrink-0">
                              <Button
                                  size="sm"
-                                 variant="secondary" // Use secondary or ghost for edit
+                                 variant="secondary" 
                                  className="text-xs px-2 py-0.5"
-                                 onClick={openEditModal} // Open modal on click
-                                 disabled={isDeletePending} // Disable if delete is happening
+                                 onClick={openEditModal}
+                                 disabled={isDeletePending}
                                  title="Edit Account"
                              >
                                 Edit
@@ -90,15 +132,78 @@ export default function AccountCard({ account }) {
                             </Button>
                         </div>
                     </div>
-                    <p className="text-2xl font-bold text-accent-green mt-1">
-                        {/* Use the formatter defined above */}
-                        {formatCurrency(account.current_balance)}
-                    </p>
+                    
+                    {isCreditCard ? (
+                        <>
+                            <p className="text-xs font-medium text-gray-400">Amount Owed</p>
+                            <p className="text-2xl font-bold text-red-400">
+                                {formatCurrency(account.current_balance)}
+                            </p>
+                            
+                            <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                    <p className="text-gray-400">Credit Limit</p>
+                                    <p className="font-medium text-white">{formatCurrency(account.credit_limit)}</p>
+                                </div>
+                                <div>
+                                    <p className="text-gray-400">Available Credit</p>
+                                    <p className="font-medium text-green-400">{formatCurrency(availableCredit)}</p>
+                                </div>
+                            </div>
+                            
+                            {account.min_payment_percent && (
+                                <div className="mt-2">
+                                    <p className="text-xs text-gray-400">Est. Minimum Payment</p>
+                                    <p className="font-medium text-yellow-400">{formatCurrency(minPayment)}</p>
+                                </div>
+                            )}
+                            
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="mt-2 text-xs w-full"
+                                onClick={toggleDetails}
+                            >
+                                {showDetails ? 'Hide Details' : 'Show Details'}
+                            </Button>
+                            
+                            {showDetails && (
+                                <div className="mt-2 pt-2 border-t border-gray-700 grid grid-cols-2 gap-2 text-xs">
+                                    <div>
+                                        <p className="text-gray-400">APR</p>
+                                        <p className="font-medium text-white">{formatPercentage(account.apr)}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-gray-400">Utilization</p>
+                                        <p className={`font-medium ${utilizationColor}`}>{formatPercentage(utilizationRate.toFixed(1))}</p>
+                                    </div>
+                                    
+                                    {account.min_payment_percent && (
+                                        <div>
+                                            <p className="text-gray-400">Min Payment %</p>
+                                            <p className="font-medium text-white">{formatPercentage(account.min_payment_percent)}</p>
+                                        </div>
+                                    )}
+                                    
+                                    {account.min_payment_fixed && (
+                                        <div>
+                                            <p className="text-gray-400">+ Fixed Amount</p>
+                                            <p className="font-medium text-white">{formatCurrency(account.min_payment_fixed)}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        // For non-credit card accounts, show regular balance
+                        <p className="text-2xl font-bold text-accent-green mt-1">
+                            {formatCurrency(account.current_balance)}
+                        </p>
+                    )}
                 </div>
 
                  <div> {/* Bottom content */}
                     <p className="text-xs text-gray-500 mt-2">
-                        {/* Use the formatter defined above */}
                         Last updated: {formatDate(account.updated_at)}
                     </p>
                  </div>

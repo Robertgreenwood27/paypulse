@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 
 export async function getBills() {
   const cookieStore = cookies();
-  const supabase = createSupabaseServerClient(cookieStore);
+  const supabase = await createSupabaseServerClient(cookieStore);
 
   const { data: { user }, error: userError } = await supabase.auth.getUser();
 
@@ -32,7 +32,7 @@ export async function getBillById(billId) {
     if (!billId) return { bill: null, error: new Error('Bill ID is required.') };
 
     const cookieStore = cookies();
-    const supabase = createSupabaseServerClient(cookieStore);
+    const supabase = await createSupabaseServerClient(cookieStore);
     const { data: { user }, error: userError } = await supabase.auth.getUser();
 
     if (userError || !user) {

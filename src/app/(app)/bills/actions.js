@@ -8,7 +8,7 @@ import { BILL_FREQUENCIES, BILL_CATEGORIES } from '@/lib/constants/billConstants
 
 export async function addBill(formData) {
   const cookieStore = cookies();
-  const supabase = createSupabaseServerClient(cookieStore);
+  const supabase = await createSupabaseServerClient(cookieStore);
 
   const { data: { session }, error: sessionError } = await supabase.auth.getSession();
   if (sessionError || !session) {
@@ -76,7 +76,7 @@ export async function deleteBill(billId) {
     return { success: false, error: 'Bill ID is required.' };
   }
   const cookieStore = cookies();
-  const supabase = createSupabaseServerClient(cookieStore);
+  const supabase = await createSupabaseServerClient(cookieStore);
 
   const { data: { session }, error: sessionError } = await supabase.auth.getSession();
   if (sessionError || !session) {
@@ -107,7 +107,7 @@ export async function updateBill(billId, formData) {
   }
 
   const cookieStore = cookies();
-  const supabase = createSupabaseServerClient(cookieStore);
+  const supabase = await createSupabaseServerClient(cookieStore);
 
   const { data: { session }, error: sessionError } = await supabase.auth.getSession();
   if (sessionError || !session) {

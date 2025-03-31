@@ -59,7 +59,7 @@ async function updateAccountBalance(supabase, accountId, userId, adjustment) {
 
 export async function addTransaction(formData) {
   const cookieStore = cookies();
-  const supabase = createSupabaseServerClient(cookieStore);
+  const supabase = await createSupabaseServerClient(cookieStore);
 
   const { data: { session }, error: sessionError } = await supabase.auth.getSession();
   if (sessionError || !session) {
@@ -74,6 +74,8 @@ export async function addTransaction(formData) {
   const description = formData.get('description')?.toString() || null;
   const category = formData.get('category')?.toString() || null;
   const bill_id = formData.get('bill_id')?.toString() || null;
+  const payment_to_account_id = formData.get('payment_to_account_id')?.toString() || null;
+  const is_minimum_payment = formData.get('is_minimum_payment')?.toString() === 'true';
 
   if (!account_id || !type || !amountStr || !dateStr) {
     return { success: false, error: 'Missing required fields (Account, Type, Amount, Date).' };
@@ -108,6 +110,8 @@ export async function addTransaction(formData) {
     description,
     category,
     ...(bill_id && { bill_id }),
+    ...(payment_to_account_id && { payment_to_account_id }),
+    ...(is_minimum_payment !== undefined && { is_minimum_payment }),
   };
 
   const { data, error } = await supabase
@@ -121,14 +125,26 @@ export async function addTransaction(formData) {
     return { success: false, error: `Database error: ${error.message}` };
   }
 
+  // Update the source account balance
   const balanceUpdated = await updateAccountBalance(supabase, account_id, userId, balanceAdjustment);
   if (!balanceUpdated) {
        console.warn(`Transaction ${data.id} added, but failed to update balance for account ${account_id}`);
   }
 
+  // If this is a credit card payment, also update the credit card account balance
+  if (payment_to_account_id) {
+    // Credit card payments are withdrawals from one account that increase the available credit on the card
+    // For the credit card, this means reducing the balance (the amount owed)
+    const creditCardBalanceUpdated = await updateAccountBalance(supabase, payment_to_account_id, userId, -amount);
+    if (!creditCardBalanceUpdated) {
+      console.warn(`Credit card payment recorded, but failed to update balance for card ${payment_to_account_id}`);
+    }
+  }
+
   revalidatePath('/transactions');
   revalidatePath('/dashboard');
   revalidatePath(`/accounts`);
+  revalidatePath('/credit-cards'); // Add this path for the new credit card dashboard
 
   console.log("Transaction added successfully:", data);
   return { success: true, data };
@@ -139,7 +155,7 @@ export async function deleteTransaction(transactionId) {
        return { success: false, error: 'Transaction ID is required.' };
    }
    const cookieStore = cookies();
-   const supabase = createSupabaseServerClient(cookieStore);
+   const supabase = await createSupabaseServerClient(cookieStore);
 
    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     if (sessionError || !session) {
@@ -149,7 +165,7 @@ export async function deleteTransaction(transactionId) {
 
     const { data: transaction, error: fetchError } = await supabase
         .from('transactions')
-        .select('account_id, type, amount')
+        .select('account_id, type, amount, payment_to_account_id')
         .eq('id', transactionId)
         .eq('user_id', userId)
         .single();
@@ -170,7 +186,9 @@ export async function deleteTransaction(transactionId) {
         return { success: false, error: `Database error: ${deleteError.message}` };
     }
 
-    const { account_id, type, amount } = transaction;
+    const { account_id, type, amount, payment_to_account_id } = transaction;
+    
+    // Calculate balance adjustment for the source account
     let balanceAdjustment = 0;
     if (type === 'deposit') {
         balanceAdjustment = -parseFloat(amount);
@@ -178,14 +196,25 @@ export async function deleteTransaction(transactionId) {
         balanceAdjustment = parseFloat(amount);
     }
 
+    // Update the source account balance
     const balanceUpdated = await updateAccountBalance(supabase, account_id, userId, balanceAdjustment);
      if (!balanceUpdated) {
          console.warn(`Transaction ${transactionId} deleted, but failed to update balance for account ${account_id}`);
      }
+     
+    // If this was a credit card payment, also update the credit card account balance
+    if (payment_to_account_id) {
+      // We're reversing a payment, so we need to increase the credit card balance (add the amount owed back)
+      const creditCardBalanceUpdated = await updateAccountBalance(supabase, payment_to_account_id, userId, parseFloat(amount));
+      if (!creditCardBalanceUpdated) {
+        console.warn(`Credit card payment deleted, but failed to update balance for card ${payment_to_account_id}`);
+      }
+    }
 
     revalidatePath('/transactions');
     revalidatePath('/dashboard');
     revalidatePath(`/accounts`);
+    revalidatePath('/credit-cards'); // Add this path for the new credit card dashboard
 
     console.log("Transaction deleted successfully:", transactionId);
     return { success: true };
@@ -196,5 +225,6 @@ export async function updateTransaction(transactionId, formData) {
      revalidatePath('/transactions');
      revalidatePath('/dashboard');
      revalidatePath(`/accounts`);
+     revalidatePath('/credit-cards'); // Add this path for the new credit card dashboard
      return { success: true, message: 'Transaction update not fully implemented yet.' };
 }
