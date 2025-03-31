@@ -1,3 +1,5 @@
+// src\app\(app)\income\actions.js
+
 'use server';
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
